@@ -1,4 +1,4 @@
-package org.solve.knightstour.domain.exception
+package org.solve.pawnstour.domain.exception
 
 /** Custom Exception representing invalid board coordinates */
 final case class InvalidCoordinateException(message: String)
