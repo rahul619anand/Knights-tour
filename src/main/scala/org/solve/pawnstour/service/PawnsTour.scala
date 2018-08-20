@@ -13,7 +13,7 @@ trait PawnsTour {
     * @param startPoint starting position of pawn in the board
     * @param boardDimension board dimension as rows and columns
     * @param legalMoves all legal moves that can be performed by the pawn
-    * @return pawn's tour
+    * @return successful pawn's tour or exception wrapped as failure
     */
   def findPath(
       startPoint: Point,

@@ -1,12 +1,12 @@
 package org.solve.pawnstour.service
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 
 import org.solve.pawnstour.domain.Point
 import org.solve.pawnstour.domain.exception.{
-  InvalidCoordinateException,
-  PawnTourException,
-  PawnTourFound
+  InvalidPointException,
+  PawnTourFound,
+  PawnTourNotFoundException
 }
 
 /**
@@ -17,11 +17,12 @@ import org.solve.pawnstour.domain.exception.{
   * 2. To decide next point on board, look at all possible unmarked points based on moving rules.
   * 3. Rank each possibility by the number of next moves from that point.
   * 4. Move to any point with the lowest rank.
-  * 5. Add chosen point to pawn's tour path (i.e marked) and repeat the process from last chosen point.
+  * 5. Add chosen point to pawn's tour path (i.e now marked) and repeat the process from last chosen point.
   *
   */
 class WarnsdorffHeuristic extends PawnsTour {
   import PawnsTour._
+  import WarnsdorffHeuristic._
 
   override def findPath(
       startPoint: Point,
@@ -30,18 +31,18 @@ class WarnsdorffHeuristic extends PawnsTour {
   ): Try[Path] = {
     if (boardDimension._1 < 1 || boardDimension._2 < 1) {
       Failure(
-        InvalidCoordinateException(
-          "Provide a valid board dimension"
+        InvalidPointException(
+          InvalidBoardDimension
         )
       )
     } else if (!startPoint.isInBounds(boardDimension)) {
       Failure(
-        InvalidCoordinateException(
-          "Starting point not within board dimension bounds"
+        InvalidPointException(
+          InvalidStartPoint
         )
       )
-    } else {
-      try {
+    } else
+      Try {
         findPathRec(
           startPoint,
           Set(startPoint),
@@ -49,11 +50,10 @@ class WarnsdorffHeuristic extends PawnsTour {
           boardDimension,
           legalMoves
         )
-        Failure(PawnTourException("Unable to find a path for pawn's tour"))
-      } catch {
-        case t: PawnTourFound => Success(t.tour)
+        throw new PawnTourNotFoundException(PathNotFound)
+      } recover {
+        case found: PawnTourFound => found.tour
       }
-    }
 
   }
 
@@ -72,7 +72,12 @@ class WarnsdorffHeuristic extends PawnsTour {
     filterNotVisited(point).sortBy(filterNotVisited(_).length)
   }
 
-  /** Find path for pawn's tour recursively using Warnsdorff's technique */
+  /** Find path for pawn's tour recursively using Warnsdorff's technique.
+    *
+    * This might not be the best approach as far as throwing exception for a valid scenario
+    * but is optimal as it breaks as soon as a valid tour path is found
+    *
+    * */
   private def findPathRec(
       point: Point,
       visited: Set[Point],
@@ -81,7 +86,7 @@ class WarnsdorffHeuristic extends PawnsTour {
       legalMoves: Set[(X, Y)]
   ): Unit =
     if (visited.size == boardDimension._1 * boardDimension._2)
-      // break when any complete tour path is discovered
+      // break when a complete tour path is discovered
       throw new PawnTourFound(path)
     else
       allValidUnvisitedPoints(point, visited, boardDimension, legalMoves)
@@ -95,4 +100,10 @@ class WarnsdorffHeuristic extends PawnsTour {
           )
         }
 
+}
+
+object WarnsdorffHeuristic {
+  val InvalidBoardDimension = "Provide a valid board dimension"
+  val InvalidStartPoint = "Starting point not within board dimension bounds"
+  val PathNotFound = "Unable to find a complete path"
 }
